@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "outDir": "./lib",
+    "target": "es5",
+    "declaration": true,
+    "sourceMap": false,
+    "importHelpers": true,
+    "noEmitHelpers": true,
+    "forceConsistentCasingInFileNames": true,
+    "alwaysStrict": true,
+    "noImplicitAny": true,
+    "noImplicitThis": true,
+    "noImplicitReturns": true,
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false,
+    "noFallthroughCasesInSwitch": true,
+    "strictNullChecks": true,
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "jsx": "react",
+    "lib": ["dom", "es6"]
+  },
+  "exclude":[
+    "node_modules",
+    "lib"
+  ]
+}

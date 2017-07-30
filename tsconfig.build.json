@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig",
+  "compilerOptions": {
+    "noUnusedLocals": true
+  },
+  "exclude": [
+    "node_modules",
+    "example",
+    "lib",
+    "**/*.test.*"
+  ]
+}
