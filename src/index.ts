@@ -11,45 +11,8 @@ export type OptParams<K extends string> = {
 export type Params<R extends string, O extends string> =
   ReqParams<R> & OptParams<O>;
 
-export interface OptRoute<
-  R extends string = never, // Required params
-  D extends string = never, // Params with defaults
-  O extends string = never  // Optional params
-> { /* tslint:disable-line:one-line */
-
-  /*
-    Add an optional part to route with an optional default. Returns an
-    OptRoute (i.e. no more extend or non-optional params because optional
-    params always go at the end.
-  */
-  opt<K extends string>(key: K, fallback: string): OptRoute<R, D|K, O>;
-  opt<K extends string>(key: K): OptRoute<R, D, O|K>;
-
-  // Returns the matching params for a given string.
-  match: (path: string) => Params<R|D, O>|null;
-
-  // Converts
-  from: (params: Params<R, D|O>) => string;
-
-  // ExpressJS-style path
-  pattern: () => string;
-};
-
-export interface Route<
-  R extends string = never, // Required params
-  D extends string = never, // Params with defaults
-  O extends string = never  // Optional params
-> extends OptRoute<R, D, O> {
-
-  // Extend route with a new part that does not correspond to some part
-  extend(part: string): Route<R, D, O>;
-
-  // Add a required param to route
-  param<K extends string>(k: K): Route<R|K, D, O>;
-};
-
 // Used internally to represent a single part of path
-interface Part {
+export interface Part {
   // Name of part or param
   name: string;
 
@@ -80,47 +43,38 @@ const DEFAULT_ROUTE_OPTS: FullRouteOpts = {
   trailingSlash: false
 };
 
-class RouteCls<
+/*
+  Base class for Route. Not created directly but with the opt method of a
+  Route. Once a Route becomes an OptRoute, it loses its ability to add
+  required params and other parts.
+*/
+export class OptRoute<
   R extends string = never,
   D extends string = never,
   O extends string = never
-> implements Route<R, D, O> {
+> { /* tslint:disable-line:one-line */
   opts: FullRouteOpts;
   parts: Part[] = [];
 
-  constructor(part?: string, opts?: RouteOpts);
-  constructor(opts?: RouteOpts);
-  constructor(first?: string|RouteOpts, second?: RouteOpts) {
-    if (typeof first === "string") {
-      this.parts = [{ name: first }];
-      this.opts = { ...DEFAULT_ROUTE_OPTS, ...(second || {}) };
-    } else {
-      this.opts = { ...DEFAULT_ROUTE_OPTS, ...(first || {}) };
-    }
-  }
-
   // clone (with new part)
-  add(part: Part): this {
-    let clone = Object.assign(
-      Object.create(Object.getPrototypeOf(this)),
-      this
-    );
-    clone.parts = clone.parts.concat([part]);
-    return clone;
+  protected add<P extends typeof OptRoute>(part: Part, proto: P): P {
+    return Object.create(proto, {
+      opts: {
+        value: this.opts
+      },
+      parts: {
+        value: this.parts.concat([part])
+      }
+    });
   }
 
-  extend(name: string): this & Route<R, D, O> {
-    return this.add({ name }) as this & Route<R, D, O>;
-  }
-
-  param<K extends string>(name: K): this & Route<R|K, D, O> {
-    return this.add({ name, param: true, required: true }) as (
-      this & Route<R|K, D, O>
-    );
-  }
-
-  opt<K extends string>(name: K, fallback: string): this & Route<R, D|K, O>;
-  opt<K extends string>(name: K): this & Route<R, D, O|K>;
+  /*
+    Add an optional part to route with an optional default. Returns an
+    OptRoute (i.e. no more extend or non-optional params because optional
+    params always go at the end.
+  */
+  opt<K extends string>(key: K, fallback: string): OptRoute<R, D|K, O>;
+  opt<K extends string>(key: K): OptRoute<R, D, O|K>;
   opt<K extends string>(
     name: K, fallback?: string
   ): any {
@@ -128,9 +82,10 @@ class RouteCls<
       name,
       param: true,
       required: typeof fallback === "string" ? fallback : false
-    });
+    }, OptRoute);
   }
 
+  // Returns the matching params for a given string.
   match(val: string): Params<R|D, O>|null {
     let { separator } = this.opts;
     if (
@@ -171,6 +126,7 @@ class RouteCls<
     return ret as Params<R|D, O>;
   }
 
+  // Converts param objects to string
   from(params: Params<R, D|O>): string {
     let retParts: string[] = [];
     for (let i in this.parts) {
@@ -192,6 +148,7 @@ class RouteCls<
     return this.join(retParts);
   }
 
+  // ExpressJS-style path
   pattern(): string {
     let retParts: string[] = [];
     for (let i in this.parts) {
@@ -207,6 +164,7 @@ class RouteCls<
     return this.join(retParts);
   }
 
+  // Helper function that adds leading and trailing separators
   protected join(parts: string[]) {
     if (this.opts.leadingSlash) {
       parts = [""].concat(parts);
@@ -218,6 +176,46 @@ class RouteCls<
   }
 }
 
+/*
+  Chainable method for creating routes.
+*/
+export class Route<
+  R extends string = never,
+  D extends string = never,
+  O extends string = never
+> extends OptRoute<R, D, O> {
+  opts: FullRouteOpts;
+  parts: Part[] = [];
+
+  constructor(part?: string, opts?: RouteOpts);
+  constructor(opts?: RouteOpts);
+  constructor(first?: string|RouteOpts, second?: RouteOpts) {
+    super();
+    if (typeof first === "string") {
+      this.parts = [{ name: first }];
+      this.opts = { ...DEFAULT_ROUTE_OPTS, ...(second || {}) };
+    } else {
+      this.opts = { ...DEFAULT_ROUTE_OPTS, ...(first || {}) };
+    }
+  }
+
+  // Extend route with a new part that does not correspond to some part
+  extend(name: string): this {
+    return this.add({ name }, Object.getPrototypeOf(this));
+  }
+
+  // Add a required param to route
+  param<K extends string>(name: K): this & Route<R|K, D, O> {
+    return this.add(
+      { name, param: true, required: true },
+      Object.getPrototypeOf(this)
+    ) as this & Route<R|K, D, O>;
+  }
+}
+
+
+/* Syntactic sugar for not having to write "new" */
+
 export interface RouteCreator {
   (part?: string, opts?: RouteOpts): Route;
   (opts?: RouteOpts): Route;
@@ -226,6 +224,6 @@ export interface RouteCreator {
 export const createRoute: RouteCreator = (
   first?: any,
   second?: any
-): Route => new RouteCls(first, second);
+): Route => new Route(first, second);
 
 export default createRoute;
