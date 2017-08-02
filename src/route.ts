@@ -246,20 +246,13 @@ export class Route<P = {}> extends OptRoute<P> { /* tslint:disable-line */
   opts: FullRouteOpts;
   parts: Part[] = [];
 
-  constructor(part?: string, opts?: RouteOpts);
-  constructor(opts?: RouteOpts);
-  constructor(first?: string|RouteOpts, second?: RouteOpts) {
+  constructor(opts: RouteOpts = {}) {
     super();
-    if (typeof first === "string") {
-      this.parts = [first];
-      this.opts = { ...DEFAULT_ROUTE_OPTS, ...(second || {}) };
-    } else {
-      this.opts = { ...DEFAULT_ROUTE_OPTS, ...(first || {}) };
-    }
+    this.opts = { ...DEFAULT_ROUTE_OPTS, ...opts };
   }
 
   // Extend route with a new part that does not correspond to some part
-  extend(name: string): this {
+  part(name: string): this {
     return this.add(name, Object.getPrototypeOf(this));
   }
 
@@ -279,15 +272,6 @@ export class Route<P = {}> extends OptRoute<P> { /* tslint:disable-line */
 
 
 /* Syntactic sugar for not having to write "new" */
-
-export interface RouteCreator {
-  (part?: string, opts?: RouteOpts): Route;
-  (opts?: RouteOpts): Route;
-}
-
-export const createRoute: RouteCreator = (
-  first?: any,
-  second?: any
-): Route => new Route(first, second);
+export const createRoute = (opts: RouteOpts = {}) => new Route(opts);
 
 export default createRoute;
