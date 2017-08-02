@@ -34,7 +34,7 @@ export const FloatParam: ParamType<number> = {
 
 export const DateTimeParam: ParamType<Date> = {
   parse: (s) => {
-    let ret = new Date(s);
+    let ret = new Date(parseInt(s));
     return isNaN(ret.getTime()) ? undefined : ret;
   },
   stringify: (d) => d.getTime().toString()
@@ -46,11 +46,13 @@ export const ArrayParam = <T>(
 ): ParamType<T[]> => ({
   parse: (s) => {
     let ret: T[] = [];
-    let parts = s.split(delimiter);
-    for (let i in parts) {
-      let t = p.parse(parts[i]);
-      if (t === void 0) return undefined;
-      ret.push(t);
+    if (s) {
+      let parts = s.split(delimiter);
+      for (let i in parts) {
+        let t = p.parse(parts[i]);
+        if (t === void 0) return undefined;
+        ret.push(t);
+      }
     }
     return ret;
   },

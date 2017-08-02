@@ -65,7 +65,8 @@ export class RestRoute<
     }
 
     if (val.slice(val.length - suffix.length, val.length) === suffix) {
-      val = val.slice(0, -suffix.length);
+      // NB: val.length - suffix.length b/c str.slice(0, -0) === ""
+      val = val.slice(0, val.length - suffix.length);
     } else {
       return undefined;
     }
@@ -96,8 +97,11 @@ export class RestRoute<
         // Parse single param
         else {
           let v = actual && paramType.parse(actual);
-          if (expected.required && v === void 0) {
-            return undefined;
+          if (v === void 0) {
+            // Reject if required or truthy actual (implies parsing failed)
+            if (expected.required || actual) {
+              return undefined;
+            }
           } else {
             ret[name] = v;
           }
@@ -177,9 +181,9 @@ export class OptRoute<P = {}> extends RestRoute<P> { /* tslint:disable-line */
   // clone (with new part)
   protected add<
     R extends RestRoute,
-    O extends typeof RestRoute
-  > (part: Part, proto: O): R {
-    return Object.create(proto, {
+    C extends typeof RestRoute
+  > (part: Part, cls: C): R {
+    return Object.create(cls.prototype, {
       opts: {
         value: this.opts
       },
@@ -254,9 +258,8 @@ export class Route<P = {}> extends OptRoute<P> { /* tslint:disable-line */
   // Extend route with a new part that does not correspond to some part
   extend(...names: string[]): this {
     let t = this;
-    let proto = Object.getPrototypeOf(this);
     for (let i in names) {
-      t = t.add(names[i], proto);
+      t = t.add(names[i], Route);
     }
     return t;
   }

@@ -17,4 +17,4 @@ export {
   ArrayParam
 } from "./param-types";
 
-export default createRoute;;
+export default createRoute;
