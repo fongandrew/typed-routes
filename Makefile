@@ -22,4 +22,4 @@ lint:
 
 test:
 	ts-node --project tsconfig.test.json \
-		node_modules/.bin/blue-tape src/**/*.test.* | tap-spec
+		node_modules/.bin/tape src/**/*.test.* | tap-spec
