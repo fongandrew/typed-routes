@@ -252,8 +252,13 @@ export class Route<P = {}> extends OptRoute<P> { /* tslint:disable-line */
   }
 
   // Extend route with a new part that does not correspond to some part
-  part(name: string): this {
-    return this.add(name, Object.getPrototypeOf(this));
+  extend(...names: string[]): this {
+    let t = this;
+    let proto = Object.getPrototypeOf(this);
+    for (let i in names) {
+      t = t.add(names[i], proto);
+    }
+    return t;
   }
 
   // Add a required param to route
