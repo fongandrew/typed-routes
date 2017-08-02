@@ -60,10 +60,9 @@ path.from({ uid: 123 });   // => "/profile/123"
 path.from({ uid: "abc" }); // => Type error
 ```
 
-Types are just an object with a parse and stringify function. For example,
+Types are just an object with parse and stringify functions. For example,
 this is the definition of the `DateTimeParam` type, which converts a Date
-to milliseconds since epoch. You can provide your own types for more
-customized behavior (such as returning a default value is one is undefined).
+to milliseconds since epoch.
 
 ```ts
 const DateTimeParam = {
@@ -74,6 +73,9 @@ const DateTimeParam = {
   stringify: (d: Date): string => d.getTime().toString()
 };
 ```
+
+You can provide your own types for more
+customized behavior (such as returning a default value is one is undefined).
 
 API
 ---
