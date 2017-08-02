@@ -1,27 +1,20 @@
-// Required params helper type
-export type ReqParams<K extends string> = {
-  [P in K]: string;
-};
+import { ParamType, StrParam } from "./param-types";
 
-// Optional params helper type
-export type OptParams<K extends string> = {
-  [P in K]?: string;
-};
-
-export type Params<R extends string, O extends string> =
-  ReqParams<R> & OptParams<O>;
-
-// Used internally to represent a single part of path
-export interface Part {
-  // Name of part or param
+export interface Param<T = string> {
   name: string;
-
-  // Is this a param?
-  param?: boolean;
-
-  // Is this a required param? If string, use as fallback
-  required?: boolean|string;
+  required: boolean;
+  paramType: ParamType<T>;
 };
+
+export type MapParam<K extends string, T> = { [P in K]: T };
+export type OptParam<K extends string, T> = { [P in K]?: T };
+
+/*
+  Used internally to represent a single part of path.
+  * String = simple part, needs to match exactly
+  * Object = param
+*/
+export type Part = string|Param<any>
 
 // Options for routes
 export interface FullRouteOpts {
@@ -49,15 +42,16 @@ const DEFAULT_ROUTE_OPTS: FullRouteOpts = {
   required params and other parts.
 */
 export class OptRoute<
-  R extends string = never,
-  D extends string = never,
-  O extends string = never
-> { /* tslint:disable-line:one-line */
+  P = {} // Type of params when converting to params from string
+> {
   opts: FullRouteOpts;
   parts: Part[] = [];
 
   // clone (with new part)
-  protected add<P extends typeof OptRoute>(part: Part, proto: P): P {
+  protected add<
+    R extends OptRoute,
+    C extends typeof OptRoute
+  > (part: Part, proto: C): R {
     return Object.create(proto, {
       opts: {
         value: this.opts
@@ -73,93 +67,87 @@ export class OptRoute<
     OptRoute (i.e. no more extend or non-optional params because optional
     params always go at the end.
   */
-  opt<K extends string>(key: K, fallback: string): OptRoute<R, D|K, O>;
-  opt<K extends string>(key: K): OptRoute<R, D, O|K>;
-  opt<K extends string>(
-    name: K, fallback?: string
-  ): any {
+  opt<K extends string, T = string>(
+    name: K,
+    paramType?: ParamType<T>
+  ): OptRoute<P & OptParam<K, T>> {
     return this.add({
       name,
-      param: true,
-      required: typeof fallback === "string" ? fallback : false
+      required: false,
+      paramType: paramType || StrParam
     }, OptRoute);
   }
 
-  // Returns the matching params for a given string.
-  match(val: string): Params<R|D, O>|null {
+  // Returns the matching params for a given string. Undefined if no match.
+  match(val: string): P|undefined {
     let { separator } = this.opts;
     if (
       this.opts.leadingSlash &&
       val.slice(0, separator.length) === separator
     ) {
-      val = val.slice(1);
+      val = val.slice(separator.length);
     }
     if (
       this.opts.trailingSlash &&
       val.slice(val.length - separator.length, val.length) === separator
     ) {
-      val = val.slice(0, -1);
+      val = val.slice(0, -separator.length);
     }
 
-    let ret: Partial<{ [K in R|D|O]: string }> = {};
-    let strParts = val.split("/");
+    let ret: Partial<P> = {};
+    let strParts = val.split(separator);
     for (let i in this.parts) {
       let expected = this.parts[i];
-      let actual = strParts[i];
+      let actual = strParts[i]
 
       // If param, assign param to key.
-      if (expected.param) {
-        if (actual) {
-          ret[expected.name] = actual;
-        } else if (typeof expected.required === "string") {
-          ret[expected.name] = expected.required;
-        } else if (expected.required === true) {
-          return null;
+      if (typeof expected !== "string") {
+        let val = expected.paramType.parse(actual);
+        if (expected.required && val === void 0) {
+          return undefined;
+        } else {
+          ret[expected.name] = val;
         }
       }
 
       // Not param, return null if not exact match
-      else if (actual !== expected.name) {
-        return null;
+      else if (actual !== expected) {
+        return undefined;
       }
     }
-    return ret as Params<R|D, O>;
+
+    return ret as P;
   }
 
   // Converts param objects to string
-  from(params: Params<R, D|O>): string {
+  from(params: P): string {
     let retParts: string[] = [];
     for (let i in this.parts) {
       let part = this.parts[i];
-      if (part.param) {
-        let val: string = (params as any)[part.name];
-        if (val) {
-          retParts.push(val);
+      if (typeof part === "string") {
+        retParts.push(part);
+      } else {
+        let val = (params as any)[part.name];
+        if (val === void 0) {
+          retParts.push(part.paramType.stringify(val));
         } else if (part.required === true) {
           throw new Error("Expected value for " + part.name);
-        } else if (typeof part.required === "string") {
-          retParts.push(part.required);
         }
-      }
-      else {
-        retParts.push(part.name);
       }
     }
     return this.join(retParts);
   }
 
   // ExpressJS-style path
-  pattern(): string {
+  toString(): string {
     let retParts: string[] = [];
     for (let i in this.parts) {
-      let { name, param, required } = this.parts[i];
-      if (param) {
-        name = ":" + name;
-        if (required === true) {
-          name = name + "?";
-        }
+      let part = this.parts[i];
+      if (typeof part === "string") {
+        retParts.push(part);
+      } else {
+        retParts.push(":" + part.name + (part.required ? "" : "?"));
       }
-      retParts.push(name);
     }
     return this.join(retParts);
   }
@@ -179,11 +167,7 @@ export class OptRoute<
 /*
   Chainable method for creating routes.
 */
-export class Route<
-  R extends string = never,
-  D extends string = never,
-  O extends string = never
-> extends OptRoute<R, D, O> {
+export class Route<P = {}> extends OptRoute<P> { /* tslint:disable-line */
   opts: FullRouteOpts;
   parts: Part[] = [];
 
@@ -192,7 +176,7 @@ export class Route<
   constructor(first?: string|RouteOpts, second?: RouteOpts) {
     super();
     if (typeof first === "string") {
-      this.parts = [{ name: first }];
+      this.parts = [first];
       this.opts = { ...DEFAULT_ROUTE_OPTS, ...(second || {}) };
     } else {
       this.opts = { ...DEFAULT_ROUTE_OPTS, ...(first || {}) };
@@ -201,15 +185,19 @@ export class Route<
 
   // Extend route with a new part that does not correspond to some part
   extend(name: string): this {
-    return this.add({ name }, Object.getPrototypeOf(this));
+    return this.add(name, Object.getPrototypeOf(this));
   }
 
   // Add a required param to route
-  param<K extends string>(name: K): this & Route<R|K, D, O> {
-    return this.add(
-      { name, param: true, required: true },
-      Object.getPrototypeOf(this)
-    ) as this & Route<R|K, D, O>;
+  param<K extends string, T = string>(
+    name: K,
+    paramType?: ParamType<T>
+  ): Route<P & MapParam<K, T>> {
+    return this.add({
+      name,
+      required: true,
+      paramType: paramType || StrParam
+    }, Route);
   }
 }
 
