@@ -1,15 +1,15 @@
 {
-  "name": "ts-boilerplate",
+  "name": "typed-routes",
   "version": "0.1.0",
-  "description": "Default settings for NPM package written in TypeScript",
+  "description": "Routes with TypeScript support",
   "main": "lib/index.js",
   "typings": "./lib/index.d.ts",
   "repository": {
     "type": "git",
-    "url": "https://github.com/fongandrew/ts-boilerplate.git"
+    "url": "https://github.com/esperco/typed-routes.git"
   },
   "author": "Andrew Fong <id@andrewfong.com>",
-  "homepage": "https://github.com/fongandrew/ts-boilerplate",
+  "homepage": "https://github.com/esperco/typed-routes",
   "license": "MIT",
   "devDependencies": {
     "@types/blue-tape": "^0.1.31",
