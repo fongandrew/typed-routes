@@ -1,6 +1,7 @@
 typed-routes
 ============
 [![Build Status](https://travis-ci.org/esperco/typed-routes.svg?branch=master)](https://travis-ci.org/esperco/typed-routes)
+[![npm version](https://badge.fury.io/js/typed-routes.svg)](https://badge.fury.io/js/typed-routes)
 
 Routes with TypeScript support.
 
