@@ -14,26 +14,26 @@ export type OptParam<K extends string, T> = { [P in K]?: T };
   * String = simple part, needs to match exactly
   * Object = param
 */
-export type Part = string|Param<any>
+export type Part = string|Param<any>;
 
 // Options for routes
 export interface FullRouteOpts {
-  // What kind of slash separates paths?
-  separator: string;
+  // What kind of "slash" separates paths?
+  delimiter: string;
 
-  // Leading slash expected?
-  leadingSlash: boolean;
+  // What does path start with?
+  prefix: string;
 
-  // Trailing slash expected?
-  trailingSlash: boolean;
+  // What does path endwith
+  suffix: string;
 }
 
 export type RouteOpts = Partial<FullRouteOpts>;
 
 const DEFAULT_ROUTE_OPTS: FullRouteOpts = {
-  separator: "/",
-  leadingSlash: true,
-  trailingSlash: false
+  delimiter: "/",
+  prefix: "/",    // Leading slash
+  suffix: ""      // No trailing slash
 };
 
 /*
@@ -80,25 +80,24 @@ export class OptRoute<
 
   // Returns the matching params for a given string. Undefined if no match.
   match(val: string): P|undefined {
-    let { separator } = this.opts;
-    if (
-      this.opts.leadingSlash &&
-      val.slice(0, separator.length) === separator
-    ) {
-      val = val.slice(separator.length);
+    let { delimiter, prefix, suffix } = this.opts;
+    if (val.slice(0, prefix.length) === prefix) {
+      val = val.slice(prefix.length);
+    } else {
+      return undefined;
     }
-    if (
-      this.opts.trailingSlash &&
-      val.slice(val.length - separator.length, val.length) === separator
-    ) {
-      val = val.slice(0, -separator.length);
+
+    if (val.slice(val.length - suffix.length, val.length) === suffix) {
+      val = val.slice(0, -suffix.length);
+    } else {
+      return undefined;
     }
 
     let ret: Partial<P> = {};
-    let strParts = val.split(separator);
+    let strParts = val.split(delimiter);
     for (let i in this.parts) {
       let expected = this.parts[i];
-      let actual = strParts[i]
+      let actual = strParts[i];
 
       // If param, assign param to key.
       if (typeof expected !== "string") {
@@ -152,17 +151,12 @@ export class OptRoute<
     return this.join(retParts);
   }
 
-  // Helper function that adds leading and trailing separators
+  // Helper function that adds leading and trailing delimiters
   protected join(parts: string[]) {
-    if (this.opts.leadingSlash) {
-      parts = [""].concat(parts);
-    }
-    if (this.opts.trailingSlash) {
-      parts = parts.concat([""]);
-    }
-    return parts.join(this.opts.separator);
+    let { prefix, suffix, delimiter } = this.opts;
+    return prefix + parts.join(delimiter) + suffix;
   }
-}
+};
 
 /*
   Chainable method for creating routes.
@@ -199,7 +193,7 @@ export class Route<P = {}> extends OptRoute<P> { /* tslint:disable-line */
       paramType: paramType || StrParam
     }, Route);
   }
-}
+};
 
 
 /* Syntactic sugar for not having to write "new" */

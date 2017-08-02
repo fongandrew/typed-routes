@@ -59,6 +59,6 @@ export const ArrayParam = <T>(
     for (let i in t) {
       ret.push(p.stringify(t[i]));
     }
-    return ret.join(delimiter)
+    return ret.join(delimiter);
   }
 });
