@@ -2,9 +2,7 @@
 
 # Put Node bins in path
 export PATH := node_modules/.bin:$(PATH)
-
-# Set globstar so "**" works for testing
-export SHELL := /bin/bash -O globstar
+export SHELL := /bin/bash
 
 default: build
 
@@ -22,4 +20,4 @@ lint:
 
 test:
 	ts-node --project tsconfig.test.json \
-		node_modules/.bin/tape src/**/*.test.* | tap-spec
+		node_modules/.bin/tape 'src/**/*.test.*' | tap-spec
